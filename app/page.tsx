@@ -1,65 +1,134 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function Home() {
+  const [title, setTitle] = useState("");
+  const [url, setUrl] = useState("");
+  const [bookmarks, setBookmarks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [dark, setDark] = useState(false);
+
+  const fetchBookmarks = async () => {
+    const { data } = await supabase
+      .from("bookmarks")
+      .select("*")
+      .order("id", { ascending: false });
+
+    setBookmarks(data || []);
+  };
+
+  useEffect(() => {
+    fetchBookmarks();
+  }, []);
+
+  const addBookmark = async () => {
+    if (!url) return alert("Enter a URL");
+
+    setLoading(true);
+    await supabase.from("bookmarks").insert([{ title, url }]);
+    setTitle("");
+    setUrl("");
+    await fetchBookmarks();
+    setLoading(false);
+  };
+
+  const deleteBookmark = async (id: number) => {
+    await supabase.from("bookmarks").delete().eq("id", id);
+    fetchBookmarks();
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <main
+      className={`min-h-screen flex items-center justify-center p-6 transition ${
+        dark
+          ? "bg-gradient-to-br from-gray-900 via-gray-800 to-black"
+          : "bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500"
+      }`}
+    >
+      <button
+        onClick={() => setDark(!dark)}
+        className="absolute top-4 right-4 bg-white/90 text-black backdrop-blur px-4 py-2 rounded-full shadow hover:scale-105 transition"
+      >
+        {dark ? "☀️ Light" : "🌙 Dark"}
+      </button>
+
+      <div className="w-full max-w-xl bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl p-8 text-black">
+        <h1 className="text-3xl font-bold mb-1 flex items-center gap-2">
+          🚀 Smart Bookmark
+          <span className="text-xs bg-indigo-100 text-indigo-600 px-3 py-1 rounded-full">
+            Beta
+          </span>
+        </h1>
+
+        <p className="text-gray-600 mb-6">
+          Save and manage your favorite links
+        </p>
+
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Title (optional)"
+          className="w-full mb-3 p-3 rounded-xl border border-gray-300 text-black placeholder-gray-400 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
+
+        <input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://example.com"
+          className="w-full mb-4 p-3 rounded-xl border border-gray-300 text-black placeholder-gray-400 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+        />
+
+        <button
+          onClick={addBookmark}
+          disabled={loading}
+          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl transition active:scale-95"
+        >
+          {loading ? "Saving..." : "Add Bookmark"}
+        </button>
+
+        <div className="mt-6 space-y-3">
+          {bookmarks.length === 0 && (
+            <div className="text-center text-gray-500 py-6">
+              <p className="text-lg font-medium">No bookmarks yet 👀</p>
+              <p className="text-sm">Start by adding your first link</p>
+            </div>
+          )}
+
+          {bookmarks.map((b) => (
             <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              key={b.id}
+              href={b.url}
+              target="_blank"
+              className="flex items-center gap-3 p-4 rounded-xl bg-white border shadow hover:shadow-xl transition group"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              <img
+                src={`https://www.google.com/s2/favicons?domain=${b.url}&sz=64`}
+                className="w-8 h-8 rounded"
+                alt=""
+              />
+
+              <div className="flex-1">
+                <p className="font-semibold text-gray-800 group-hover:text-indigo-600 transition">
+                  {b.title || "Untitled"}
+                </p>
+                <p className="text-sm text-gray-500 truncate">{b.url}</p>
+              </div>
+
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  deleteBookmark(b.id);
+                }}
+                className="text-red-500 hover:text-red-700 text-sm"
+              >
+                🗑️
+              </button>
+            </a>
+          ))}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }
